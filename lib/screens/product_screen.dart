@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
@@ -14,12 +13,9 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   final ProductService _productService = ProductService();
 
-  final TextEditingController _searchController =
-      TextEditingController();
-  final TextEditingController _minPriceController =
-      TextEditingController();
-  final TextEditingController _maxPriceController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _minPriceController = TextEditingController();
+  final TextEditingController _maxPriceController = TextEditingController();
 
   String? get _filterError {
     final minText = _minPriceController.text.trim();
@@ -28,13 +24,11 @@ class _ProductScreenState extends State<ProductScreen> {
     final min = minText.isEmpty ? null : double.tryParse(minText);
     final max = maxText.isEmpty ? null : double.tryParse(maxText);
 
-    if (minText.isNotEmpty &&
-        (min == null || !min.isFinite || min < 0)) {
+    if (minText.isNotEmpty && (min == null || !min.isFinite || min < 0)) {
       return 'Enter a valid non-negative minimum price.';
     }
 
-    if (maxText.isNotEmpty &&
-        (max == null || !max.isFinite || max < 0)) {
+    if (maxText.isNotEmpty && (max == null || !max.isFinite || max < 0)) {
       return 'Enter a valid non-negative maximum price.';
     }
 
@@ -75,112 +69,27 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   Future<void> _showProductDialog({Product? product}) async {
-    final formKey = GlobalKey<FormState>();
-
-    final nameController = TextEditingController(
-      text: product?.name ?? '',
+    final result = await showDialog<_ProductFormResult>(
+      context: context,
+      builder: (dialogContext) {
+        return _ProductFormDialog(product: product);
+      },
     );
 
-    final priceController = TextEditingController(
-      text: product == null ? '' : product.price.toString(),
-    );
+    // Cancel returns null. No database operation is performed.
+    if (result == null || !mounted) return;
 
     try {
-      final shouldSave = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: Text(
-              product == null ? 'Add Product' : 'Edit Product',
-            ),
-            content: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Product name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Product name cannot be empty.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: priceController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Price',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Price is required.';
-                        }
-
-                        final price = double.tryParse(value.trim());
-
-                        if (price == null || !price.isFinite) {
-                          return 'Enter a valid finite number.';
-                        }
-
-                        if (price < 0) {
-                          return 'Price cannot be negative.';
-                        }
-
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext, false);
-                },
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (formKey.currentState!.validate()) {
-                    Navigator.pop(dialogContext, true);
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      );
-
-      if (shouldSave != true || !mounted) return;
-
-      final name = nameController.text.trim();
-      final price = double.parse(priceController.text.trim());
-
       if (product == null) {
         await _productService.addProduct(
-          name: name,
-          price: price,
+          name: result.name,
+          price: result.price,
         );
       } else {
         await _productService.updateProduct(
           id: product.id,
-          name: name,
-          price: price,
+          name: result.name,
+          price: result.price,
         );
       }
 
@@ -198,12 +107,8 @@ class _ProductScreenState extends State<ProductScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Operation failed: $error')),
-      );
-    } finally {
-      nameController.dispose();
-      priceController.dispose();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Operation failed: $error')));
     }
   }
 
@@ -248,9 +153,8 @@ class _ProductScreenState extends State<ProductScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Delete failed: $error')));
     }
   }
 
@@ -265,10 +169,7 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Autumn Market'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Autumn Market'), centerTitle: true),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showProductDialog(),
         icon: const Icon(Icons.add),
@@ -303,8 +204,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     Expanded(
                       child: TextField(
                         controller: _minPriceController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                           signed: true,
                         ),
@@ -319,8 +219,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     Expanded(
                       child: TextField(
                         controller: _maxPriceController,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
+                        keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                           signed: true,
                         ),
@@ -367,9 +266,7 @@ class _ProductScreenState extends State<ProductScreen> {
 
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     !snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final allProducts = snapshot.data ?? [];
@@ -382,9 +279,7 @@ class _ProductScreenState extends State<ProductScreen> {
                 }
 
                 if (filteredProducts.isEmpty) {
-                  return const Center(
-                    child: Text('No products found.'),
-                  );
+                  return const Center(child: Text('No products found.'));
                 }
 
                 return ListView.builder(
@@ -401,7 +296,11 @@ class _ProductScreenState extends State<ProductScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(
-                          child: Text(product.name[0].toUpperCase()),
+                          child: Text(
+                            product.name.isEmpty
+                                ? '?'
+                                : product.name[0].toUpperCase(),
+                          ),
                         ),
                         title: Text(product.name),
                         subtitle: Column(
@@ -412,9 +311,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             ),
                             Text(
                               'ID: ${product.id}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
@@ -428,10 +325,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             }
                           },
                           itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Edit'),
-                            ),
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
                             PopupMenuItem(
                               value: 'delete',
                               child: Text('Delete'),
@@ -447,6 +341,132 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Holds the validated form values returned by the dialog.
+class _ProductFormResult {
+  final String name;
+  final double price;
+
+  const _ProductFormResult({required this.name, required this.price});
+}
+
+// Separate StatefulWidget owns its controllers.
+// They are disposed when the dialog widget is removed.
+class _ProductFormDialog extends StatefulWidget {
+  final Product? product;
+
+  const _ProductFormDialog({this.product});
+
+  @override
+  State<_ProductFormDialog> createState() => _ProductFormDialogState();
+}
+
+class _ProductFormDialogState extends State<_ProductFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _nameController;
+  late final TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _nameController = TextEditingController(text: widget.product?.name ?? '');
+
+    _priceController = TextEditingController(
+      text: widget.product == null ? '' : widget.product!.price.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final result = _ProductFormResult(
+      name: _nameController.text.trim(),
+      price: double.parse(_priceController.text.trim()),
+    );
+
+    Navigator.of(context).pop(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.product != null;
+
+    return AlertDialog(
+      title: Text(isEditing ? 'Edit Product' : 'Add Product'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Product name',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Product name cannot be empty.';
+                  }
+
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                  signed: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Price',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Price is required.';
+                  }
+
+                  final price = double.tryParse(value.trim());
+
+                  if (price == null || !price.isFinite) {
+                    return 'Enter a valid finite number.';
+                  }
+
+                  if (price < 0) {
+                    return 'Price cannot be negative.';
+                  }
+
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
     );
   }
 }
